@@ -195,6 +195,50 @@ const positionBille = (page, id) => page.evaluate(async (id) => {
   return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight }
 }, id)
 
+// Decor spatial (28.25) : bornes, filante, bouton, mouvement reduit, aucun objet qui s'accumule.
+async function verifierDecor(page, tactile) {
+  const lire = () => page.evaluate(async () => {
+    const m = await import('/static/scene.js')
+    return m.ambiance.etat()
+  })
+  await page.evaluate(async () => { window.__m = await import('/static/scene.js') })
+  const e = await lire()
+  const max = tactile ? 700 : 1600
+  verifier(e.couches === 3 && e.etoiles > 0 && e.etoiles <= max, `decor : ${e.etoiles} etoiles sur ${e.couches} couches (borne ${max})`)
+  verifier(e.vaisseaux <= (tactile ? 1 : 3) && e.satellites <= (tactile ? 1 : 2), `decor : ${e.vaisseaux} vaisseau(x), ${e.satellites} satellite(s) (profil ${tactile ? 'mobile' : 'bureau'})`)
+  verifier(e.rayonMinObserve >= 1000, `decor : tout au-dela de la distance max de la camera (rayon min ${Math.round(e.rayonMinObserve)} >= 1000)`)
+  verifier(e.mouvement === true, 'decor : mouvement actif par defaut')
+
+  await page.evaluate(async () => (await import('/static/scene.js')).ambiance.forcerFilante())
+  await page.waitForTimeout(250)
+  verifier((await lire()).filanteActive === true, 'decor : etoile filante lancee')
+  // Rendu logiciel : quelques images/s, dt borne a 0,1 s par image -> la filante dure plus longtemps en temps reel.
+  await page.waitForFunction(() => !window.__m.ambiance.etat().filanteActive, null, { timeout: 30000 })
+  const apres = await lire()
+  verifier(apres.filanteActive === false && apres.objets === e.objets, `decor : etoile filante terminee, aucun objet laisse dans la scene (active=${apres.filanteActive}, objets ${e.objets}→${apres.objets})`)
+
+  // Bouton du decor : coupe puis rallume le mouvement, etat expose aux lecteurs d'ecran.
+  const bouton = page.locator('#bouton-decor')
+  const boite = await bouton.boundingBox()
+  verifier(boite && boite.width >= 32 && boite.height >= 32, `decor : bouton assez grand (${Math.round(boite?.width)}x${Math.round(boite?.height)} px)`)
+  await (tactile ? bouton.tap() : bouton.click())
+  verifier((await bouton.getAttribute('aria-pressed')) === 'false' && (await lire()).mouvement === false, 'decor : bouton coupe le mouvement')
+  await (tactile ? bouton.tap() : bouton.click())
+  verifier((await bouton.getAttribute('aria-pressed')) === 'true' && (await lire()).mouvement === true, 'decor : bouton rallume le mouvement')
+
+  // prefers-reduced-motion en cours de session : le bouton ne peut plus le lever.
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.waitForFunction(() => document.querySelector('#bouton-decor').getAttribute('aria-disabled') === 'true', null, { timeout: 10000 })
+  const reduit = await lire()
+  verifier(reduit.mouvement === false && reduit.reduitSysteme === true && (await bouton.getAttribute('aria-disabled')) === 'true', 'decor : mouvement reduit par le systeme respecte (a chaud)')
+  await page.evaluate(async () => (await import('/static/scene.js')).ambiance.forcerFilante())
+  await page.waitForFunction(() => !window.__m.ambiance.etat().filanteActive, null, { timeout: 15000 })
+  verifier((await lire()).filanteActive === false, 'decor : aucune etoile filante en mouvement reduit')
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.waitForFunction(() => document.querySelector('#bouton-decor').getAttribute('aria-disabled') === 'false', null, { timeout: 10000 })
+  verifier((await lire()).mouvement === true, 'decor : mouvement retabli quand la preference disparait')
+}
+
 async function parcours(navigateur, nom, url, arbre) {
   const f = FORMATS[nom]
   const tactile = Boolean(f.hasTouch)
@@ -218,6 +262,7 @@ async function parcours(navigateur, nom, url, arbre) {
   verifier(await page.isVisible('#aide'), 'racine : aide de premiere visite affichee')
   const bloom = await page.evaluate(async () => (await import('/static/scene.js')).BLOOM_ACTIF)
   verifier(bloom === !tactile, `bloom ${bloom ? 'actif' : 'coupe'} (attendu : ${tactile ? 'coupe sur telephone' : 'actif sur bureau'})`)
+  await verifierDecor(page, tactile)
   await etape('1-racine')
 
   await viser(await positionEtiquette(page, R.id))
@@ -230,6 +275,9 @@ async function parcours(navigateur, nom, url, arbre) {
     return { ouverte: s.noeud(r).role, filles: filles.map((id) => s.noeud(id)?.role) }
   }, [R.id, arbre.fillesR])
   verifier(roles.ouverte === 'ouverte' && roles.filles.every((x) => x === 'enfant'), `roles apres ouverture : ouverte + ${roles.filles.length} enfant(s)`)
+  await page.waitForFunction(() => window.__m.ambiance.etat().facteurContexte <= 0.51, null, { timeout: 20000 })
+  const calme = await page.evaluate(async () => (await import('/static/scene.js')).ambiance.etat().facteurContexte)
+  verifier(calme < 0.6, `decor : plus discret quand une note est ouverte (facteur ${calme.toFixed(2)})`)
   await etape('2-ouverte')
 
   if (C) {

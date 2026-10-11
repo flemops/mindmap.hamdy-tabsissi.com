@@ -26,6 +26,7 @@ import { OutputPass } from './vendor/three-0.185.1/examples/jsm/postprocessing/O
 // Tous les reglages visuels (couleurs, tailles, opacites par role, globes, bloom,
 // camera) : apparence.js. Ce fichier n'en garde que la mecanique.
 import { COULEURS, MONDE, LUEUR, GLOBES, ROLES, SURVOL, ETIQUETTES, ETOILES, CAMERA } from './apparence.js'
+import { creerAmbiance } from './ambiance.js'
 
 /** Garde anti "deux copies de three" : app.js compare a '185'. */
 export const REVISION_THREE = THREE.REVISION
@@ -106,6 +107,9 @@ if (bloomPossible) {
 
 // Cree dans attacher() : le calque #etiquettes doit exister dans le DOM.
 let labelRenderer = null
+
+// Decor spatial (ambiance.js) : hors graphe de notes, hors raycast. app.js lui donne le temps.
+export const ambiance = creerAmbiance(scene, camera, { telephone: estTelephone })
 
 const raycaster = new THREE.Raycaster()
 
@@ -317,6 +321,7 @@ export function redimensionner() {
   labelRenderer?.setSize(w, h)
   camera.aspect = w / h
   camera.updateProjectionMatrix()
+  ambiance.redimensionner()
   marquerSale()
 }
 

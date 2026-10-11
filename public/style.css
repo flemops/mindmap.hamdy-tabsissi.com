@@ -245,6 +245,9 @@ button.danger:hover { border-color: var(--ambre); color: var(--ambre); }
 #fil-ariane [aria-current="page"] { color: var(--texte); border-bottom-color: var(--ambre); }
 
 #recherche { position: relative; width: min(300px, 40vw); }
+#bouton-decor { min-height: 40px; min-width: 40px; padding: 0; font-size: 1rem; line-height: 1; }
+#bouton-decor[aria-pressed="false"] { color: var(--attenue); }
+#bouton-decor[aria-disabled="true"] { opacity: .5; cursor: default; }
 #champ-recherche {
   width: 100%;
   min-width: 0;
@@ -371,6 +374,10 @@ button.danger:hover { border-color: var(--ambre); color: var(--ambre); }
     border-radius: 12px 12px 0 0;
   }
   #fil-ariane, #recherche { max-width: 100%; width: 100%; }
+  /* Meme rangee que le fil d'Ariane (HUD bas : pas de rangee en plus, 7.25rem inchange). */
+  #hud-haut { position: fixed; }
+  #bouton-decor { position: absolute; top: .5rem; right: .5rem; min-height: 32px; min-width: 32px; }
+  #fil-ariane { max-width: calc(100% - 40px); width: calc(100% - 40px); }
   #resultats { top: auto; bottom: calc(100% + .35rem); }
   /* panneau-note au-dessus du HUD bas (7.25rem ~= sa hauteur : 32+40px de
      boutons/champ + gaps/paddings) ; 38vh (amendement D) plutot que 40vh
