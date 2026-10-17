@@ -80,6 +80,69 @@ export const ETIQUETTES = {
 // Coquille lointaine : le fond bouge peu quand on orbite, effet « ciel » plutot que « confettis ».
 export const ETOILES = { nombre: 1600, rayonMin: 1400, epaisseur: 1100, taille: 2.2, opacite: 0.8 }
 
+// Decor spatial (ambiance.js) : couches d'etoiles, etoiles filantes, vaisseaux,
+// satellites. Invariant : tout vit a `rayonMin` ou plus, au-dela de la distance
+// maximale de la camera (controls.js#maxDistance ~ 800) : aucun element ne peut
+// passer entre la camera et les notes, ni les masquer. Rien n'est cliquable.
+// `opacite` : maximum de chaque famille ; le decor descend a `contexte.calme` de
+// ces valeurs quand une note est ouverte ou la recherche active. Palette stricte :
+// aucune couleur hors COULEURS, luminance sous le seuil du bloom (.85).
+export const AMBIANCE = {
+  rayonMin: 1000,
+  /** Couches de la plus lointaine a la plus proche (profondeur par parallaxe de l'orbite). */
+  couches: [
+    { nombre: 900, rayon: [2300, 3300], taille: [0.8, 1.5], opacite: 0.55, scintillement: 0.15 },
+    { nombre: 500, rayon: [1700, 2300], taille: [1.0, 2.0], opacite: 0.7, scintillement: 0.3 },
+    { nombre: 160, rayon: [1150, 1500], taille: [1.6, 2.8], opacite: 0.85, scintillement: 0.45 },
+  ],
+  /** Part des etoiles teintees d'ambre (le reste : gris attenue). */
+  partAmbre: 0.06,
+  /** Scintillement : periode en secondes (propre a chaque etoile entre ces bornes). */
+  periodeScintillement: [3, 9],
+  filantes: {
+    /** Delai aleatoire entre deux etoiles filantes (s) ; jamais deux en meme temps. */
+    delai: [9, 22],
+    duree: [0.8, 1.3],
+    /** Distance de spawn devant la camera et longueur de trainee (unites monde). */
+    profondeur: 1600,
+    trainee: 260,
+    vitesse: 820,
+    opacite: 0.9,
+    /** Zone d'apparition : part du demi-ecran minimum (0.6 = couronne exterieure, jamais le centre). */
+    zoneMin: 0.6,
+  },
+  vaisseaux: {
+    nombre: 3,
+    rayon: [1150, 1350],
+    /** Vitesse angulaire (rad/s) : un tour en 5 a 8 minutes. */
+    vitesse: [0.013, 0.021],
+    longueur: 15,
+    opacite: 0.75,
+    /** Variation lente de profondeur (part du rayon) et sa periode (s). */
+    oscillation: 0.1,
+    periodeOscillation: 70,
+  },
+  satellites: {
+    nombre: 2,
+    rayon: [1000, 1100],
+    /** Un tour en 2,5 a 4 minutes. */
+    vitesse: [0.026, 0.042],
+    taille: 7,
+    opacite: 0.8,
+    /** Clignotement du feu de navigation (periode en s, part allumee). */
+    clignotement: [2.4, 0.12],
+  },
+  contexte: {
+    /** Facteur d'opacite quand une note est ouverte / la recherche active. */
+    calme: 0.5,
+    /** Duree de transition vers/depuis le calme (s). */
+    transition: 0.6,
+  },
+  /** Cadence maximale des redessins dus au seul decor (la camera, elle, redessine a chaque image). */
+  imagesParSeconde: 30,
+  mobile: { facteurNombre: 0.4, vaisseaux: 1, satellites: 1, imagesParSeconde: 20 },
+}
+
 export const CAMERA = {
   fov: 50,
   // fitToSphere n'a aucun padding : Sphere(centre, r × 1.3) donne ≈ 3.08 r de

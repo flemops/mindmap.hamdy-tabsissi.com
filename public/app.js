@@ -7,6 +7,7 @@ import {
   redimensionner,
   rendu,
   horloge,
+  ambiance,
   REVISION_THREE,
   ajouterNotes,
   assurerGlobe,
@@ -54,6 +55,7 @@ const lienNote = document.getElementById('lien-note')
 const listeEnfants = document.getElementById('liste-enfants')
 const compteur = document.getElementById('compteur-notes')
 const boutonRemonter = document.getElementById('bouton-remonter')
+const boutonDecor = document.getElementById('bouton-decor')
 const annonce = document.getElementById('annonce')
 const astuce = document.getElementById('astuce')
 const panneau = document.getElementById('panneau-edition')
@@ -160,12 +162,17 @@ function traiterSurvol({ x, y, etiquetteId }) {
 }
 
 function boucle() {
-  const bouge = appliquerCamera(horloge.getDelta()) // controls.update(dt) : ecrit camera.position AVANT raycast/rendu
+  const dt = horloge.getDelta()
+  const bouge = appliquerCamera(dt) // controls.update(dt) : ecrit camera.position AVANT raycast/rendu
+  // Decor : plus discret quand une note est ouverte ou la recherche active (28.16).
+  const decorBouge = ambiance.maj(dt, {
+    calme: ouverteId !== null || document.activeElement === champRecherche || !resultats.hidden,
+  })
   if (survolDemande) {
     traiterSurvol(survolDemande)
     survolDemande = null
   }
-  rendu(bouge)
+  rendu(bouge || decorBouge)
   requestAnimationFrame(boucle)
 }
 
@@ -537,6 +544,23 @@ window.addEventListener('keydown', (e) => {
 })
 
 // --- Depart -------------------------------------------------------------------
+
+// Bouton du decor : coupe le mouvement (comme prefers-reduced-motion) sans retirer le decor.
+function majBoutonDecor() {
+  const impose = ambiance.imposeParLeSysteme()
+  boutonDecor.setAttribute('aria-pressed', String(ambiance.mouvementActif()))
+  boutonDecor.setAttribute('aria-disabled', String(impose))
+  boutonDecor.title = impose
+    ? 'Mouvement du décor coupé par la préférence « réduire les animations » de votre système'
+    : 'Mouvement du décor (étoiles qui scintillent, étoiles filantes, vaisseaux)'
+}
+boutonDecor.addEventListener('click', () => {
+  if (ambiance.imposeParLeSysteme()) return
+  ambiance.basculerMouvement()
+  majBoutonDecor()
+})
+matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', majBoutonDecor)
+majBoutonDecor()
 
 attacher(conteneur)
 redimensionner()
